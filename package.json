@@ -1,0 +1,24 @@
+{
+  "name": "noservernovember-animalbot",
+  "version": "1.0.0",
+  "description": "",
+  "main": "handler.js",
+  "dependencies": {
+    "aws-sdk": "^2.353.0",
+    "node-fetch": "^2.3.0"
+  },
+  "devDependencies": {},
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/jnmullen/noservernovember-animalbot.git"
+  },
+  "author": "",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/jnmullen/noservernovember-animalbot/issues"
+  },
+  "homepage": "https://github.com/jnmullen/noservernovember-animalbot#readme"
+}
