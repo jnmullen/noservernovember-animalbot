@@ -7,21 +7,31 @@ function getChallengeResponse(crc_token, consumer_secret) {
         return crypto.createHmac('sha256', consumer_secret).update(crc_token).digest('base64')
 }
 
-exports.animalbot = async (event) => {
+exports.crc = async (event) => {
 
-    if(event.queryStringParameters !== null event.queryStringParameters !== undefined) {
+    console.log(event);
+
+    if(event.queryStringParameters !== null && event.queryStringParameters !== undefined) {
 	    if(event.queryStringParameters.crc_token !== undefined &&
 		    event.queryStringParameters.crc_token !== null &&
 		    event.queryStringParameters.crc_token != "" ) {
 
-		const challenge = getChallengeResponse(event.queryStringParameters.crc_token,"");
+		console.log('got crc_token ' + event.queryStringParameters.crc_token );
+
+		const challenge = getChallengeResponse(event.queryStringParameters.crc_token,process.env.TWITTER_CONSUMER_SECRET);
+
+		console.log('challenge ' + challenge);
 
 		const response = {
                     statusCode: 200,
-                    body: {
-			    response_token: challenge
-		    }
+                    body: JSON.stringify({
+			    response_token: 'sha256=' + challenge
+		    })
         	};
+
+		console.log(response);
+
+		return response;
 
 	    }
 
@@ -30,6 +40,8 @@ exports.animalbot = async (event) => {
                     statusCode: 400,
                     body: JSON.stringify('No CRC token present')
         };
+
+	console.log(response);
 
 	return response;
     }
