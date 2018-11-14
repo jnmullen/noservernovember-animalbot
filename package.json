@@ -5,7 +5,8 @@
   "main": "handler.js",
   "dependencies": {
     "aws-sdk": "^2.353.0",
-    "node-fetch": "^2.3.0"
+    "node-fetch": "^2.3.0",
+    "twitter": "^1.7.1"
   },
   "devDependencies": {},
   "scripts": {
