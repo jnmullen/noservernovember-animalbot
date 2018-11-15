@@ -4,25 +4,28 @@ const AWS = require('aws-sdk');
 const rek = new AWS.Rekognition();
 const fetch = require('node-fetch');
 const Twitter = require('twitter');
+const ramda = require('ramda');
 
 const client = new Twitter({
-        consumer_key: process.env.TWITTER_CONSUMER_KEY,
-        consumer_secret: process.env.TWITTER_CONSUMER_SECRET,
-        access_token_key: process.env.TWITTER_ACCESS_TOKEN_KEY,
-        access_token_secret: process.env.TWITTER_ACCESS_TOKEN_SECRET
+    consumer_key: process.env.TWITTER_CONSUMER_KEY,
+    consumer_secret: process.env.TWITTER_CONSUMER_SECRET,
+    access_token_key: process.env.TWITTER_ACCESS_TOKEN_KEY,
+    access_token_secret: process.env.TWITTER_ACCESS_TOKEN_SECRET
 });
+
+const getUrlFromEntities = ramda.path(['tweet_create_events', 0, 'entities', 'urls', 0, 'urls']);
+const getUrlFromExtendedEntities = ramda.path(['tweet_create_events', 0, 'extended_entities', 'media', 0, 'media_url']);
 
 const getData = async url => {
     try {
         const response = await fetch(url);
-        const data = await response.buffer();
-        return data;
+        return await response.buffer();
     } catch (error) {
         console.log(error);
     }
 };
 
-const getAnimalAsync = async imageData => {
+const getAnimalFromRekognitionService = async imageData => {
 
     const params = {
         Image: {
@@ -32,12 +35,9 @@ const getAnimalAsync = async imageData => {
         MinConfidence: 90,
     };
 
-    const data = await rek.detectLabels(params);
+    const data = await rek.detectLabels(params).promise();
 
-    if (data.Labels.length > 0
-        && data.Labels.some(label => label.Name === 'Animal')) {
-
-        console.log('Found an animal - trying to now find the most specific match');
+    if (data.Labels.some(label => label.Name === 'Animal')) {
 
         let maxSize = 0;
         let result = '';
@@ -49,161 +49,70 @@ const getAnimalAsync = async imageData => {
             }
         });
 
-        console.log('Most specific match is : ' + result);
+        console.log(maxSize + ' ' + result);
 
-        const response = {
-            statusCode: 200,
-            body: JSON.stringify(`I can see ${matchingLabel.Name} in that image`)
-        };
+        const matchingLabel = data.Labels.find(label => label.Name === result);
 
-        return response;
+        console.log(matchingLabel.Name + ' ' + matchingLabel.Parents);
+
+        return resolve(`I can see a : ${matchingLabel.Name}`);
 
     } else {
-
-        console.log('Cannot find an animal in the image');
-
-        const response = {
-            statusCode: 200,
-            body: JSON.stringify('Sorry that picture does not appear to contain an animal')
-        };
-
-        return response;
+        return resolve('Sorry that picture is not of an animal');
     }
 };
 
-function getAnimalFromRekognitionService(imageData) {
-
-    const params = {
-        Image: {
-            Bytes: imageData
-        },
-        MaxLabels: 100,
-        MinConfidence: 90,
+async function sendReplyToTweet(text, replytoid, screenname) {
+    const payload = {
+        status: `@${screenname} ${text}`,
+        in_reply_to_status_id: replytoid
     };
 
-    return new Promise((resolve, reject) => {
-        rek.detectLabels(params, (err, data) => {
-            if (err) {
-                return reject(new Error(err));
-            }
+    console.log(payload);
 
-            //need to check it is an animal
-            if (data.Labels.some(label => label.Name === 'Animal')) {
-
-                let maxSize = 0;
-                let result = '';
-
-                data.Labels.forEach((label) => {
-                    if (label.Parents.length > maxSize) {
-                        maxSize = label.Parents.length;
-                        result = label.Name;
-                    }
-                });
-
-                console.log(maxSize + ' ' + result);
-
-                const matchingLabel = data.Labels.find(label => label.Name === result);
-
-                console.log(matchingLabel.Name + ' ' + matchingLabel.Parents);
-
-                const response = {
-                    statusCode: 200,
-                    body: JSON.stringify(matchingLabel.Name)
-                };
-
-                console.log(JSON.stringify(data));
-                return resolve(response);
-
-            } else {
-                const response = {
-                    statusCode: 200,
-                    body: JSON.stringify('Sorry that picture is not of an animal')
-                };
-
-                console.log(JSON.stringify(data));
-                return resolve(response);
-            }
-        });
-    });
+    return await client.post('statuses/update', payload);
 }
 
-function getAnimalFromRekognitionService(imageData) {
+function getUrlFromTweetData(tweetData) {
 
-    const params = {
-        Image: {
-            Bytes: imageData
-        },
-        MaxLabels: 100,
-        MinConfidence: 90,
-    };
+    const urlFromEntities = getUrlFromEntities(tweetData);
+    const urlFromExtendedEntities = getUrlFromExtendedEntities(tweetData);
 
-    return new Promise((resolve, reject) => {
-        rek.detectLabels(params, (err, data) => {
-            if (err) {
-                return reject(new Error(err));
-            }
-
-            //need to check it is an animal
-            if (data.Labels.some(label => label.Name === 'Animal')) {
-
-                let maxSize = 0;
-                let result = '';
-
-                data.Labels.forEach((label) => {
-                    if (label.Parents.length > maxSize) {
-                        maxSize = label.Parents.length;
-                        result = label.Name;
-                    }
-                });
-
-                console.log(maxSize + ' ' + result);
-
-                const matchingLabel = data.Labels.find(label => label.Name === result);
-
-                console.log(matchingLabel.Name + ' ' + matchingLabel.Parents);
-
-                return resolve(`I can see a : ${matchingLabel.Name}`);
-
-            } else {
-                return resolve('Sorry that picture is not of an animal');
-            }
-        });
-    });
-}
-
-async function sendReplyToTweet(text, replytoid,screenname) {
-	const payload = {
-		status: `@${screenname} ${text}`,
-		in_reply_to_status_id: replytoid
-	};
-
-	console.log(payload);
-
-	const tweet = await client.post('statuses/update', payload);
-	return tweet;
+    if (urlFromEntities == null && urlFromExtendedEntities == null) {
+        return null;
+    } else {
+        return urlFromEntities == null ? urlFromExtendedEntities : urlFromEntities;
+    }
 }
 
 exports.animalbot = async (event) => {
 
     const jsonBody = JSON.parse(event.body);
 
-    console.log(event);
+    console.log(JSON.stringify(event));
     console.log(JSON.stringify(jsonBody));
 
-    console.log('tweet id : ' + jsonBody.tweet_create_events[0].id_str);
-    console.log('pic URL : ' + jsonBody.tweet_create_events[0].entities.urls[0].url);
-    console.log('screen name: ' + jsonBody.tweet_create_events[0].user.screen_name);
+    const tweetId = jsonBody.tweet_create_events[0].id_str;
+    const pictureUrl = jsonBody.tweet_create_events[0].entities.urls[0].url;
+    const screenName = jsonBody.tweet_create_events[0].user.screen_name;
 
-    const imageData = await getData(jsonBody.tweet_create_events[0].entities.urls[0].url);
+    const picUrl = getUrlFromTweetData(jsonBody);
+
+    console.log('tweet id : ' + tweetId);
+    console.log('pictureUrl : ' + pictureUrl);
+    console.log('screen name : ' + screenName);
+    console.log('picUrl : ' + picUrl);
+
+    const imageData = await getData(pictureUrl);
+
     const rekognitionResponse = await getAnimalFromRekognitionService(imageData);
-    console.log('JNM ' + rekognitionResponse);
 
-    const tweet = await sendReplyToTweet(rekognitionResponse,jsonBody.tweet_create_events[0].id_str,jsonBody.tweet_create_events[0].user.screen_name);
-    
-    const response = {
-	statusCode: 200,
-   	body: JSON.stringify('OK')
+    console.log(rekognitionResponse);
+
+    await sendReplyToTweet(rekognitionResponse, tweetId, screenName);
+
+    return {
+        statusCode: 200,
+        body: JSON.stringify('OK')
     };
-
-    return response;
 };
