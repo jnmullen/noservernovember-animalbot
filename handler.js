@@ -62,7 +62,7 @@ const getAnimalFromRekognitionService = async imageData => {
     }
 };
 
-async function sendReplyToTweet(text, replytoid, screenname) {
+const sendReplyToTweet = async (text, replytoid, screenname) => {
     const payload = {
         status: `@${screenname} ${text}`,
         in_reply_to_status_id: replytoid
@@ -71,7 +71,7 @@ async function sendReplyToTweet(text, replytoid, screenname) {
     console.log(payload);
 
     return await client.post('statuses/update', payload);
-}
+};
 
 function getUrlFromTweetData(tweetData) {
 
