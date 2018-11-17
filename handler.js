@@ -55,10 +55,10 @@ const getAnimalFromRekognitionService = async imageData => {
 
         console.log(matchingLabel.Name + ' ' + matchingLabel.Parents);
 
-        return resolve(`I can see a : ${matchingLabel.Name}`);
+        return `I can see a : ${matchingLabel.Name}`;
 
     } else {
-        return resolve('Sorry that picture is not of an animal');
+        return 'Sorry that picture is not of an animal';
     }
 };
 
@@ -93,23 +93,22 @@ exports.animalbot = async (event) => {
     console.log(JSON.stringify(jsonBody));
 
     const tweetId = jsonBody.tweet_create_events[0].id_str;
-    const pictureUrl = jsonBody.tweet_create_events[0].entities.urls[0].url;
     const screenName = jsonBody.tweet_create_events[0].user.screen_name;
-
     const picUrl = getUrlFromTweetData(jsonBody);
 
     console.log('tweet id : ' + tweetId);
-    console.log('pictureUrl : ' + pictureUrl);
     console.log('screen name : ' + screenName);
     console.log('picUrl : ' + picUrl);
 
-    const imageData = await getData(pictureUrl);
+    if(picUrl != null) {
+	const imageData = await getData(picUrl);
 
-    const rekognitionResponse = await getAnimalFromRekognitionService(imageData);
+	const rekognitionResponse = await getAnimalFromRekognitionService(imageData);
 
-    console.log(rekognitionResponse);
+	console.log(rekognitionResponse);
 
-    await sendReplyToTweet(rekognitionResponse, tweetId, screenName);
+	await sendReplyToTweet(rekognitionResponse, tweetId, screenName);
+    }
 
     return {
         statusCode: 200,
