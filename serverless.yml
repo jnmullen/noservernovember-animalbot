@@ -50,7 +50,5 @@ functions:
          path: twitter
          method: get
     environment:
-            TWITTER_CONSUMER_KEY: ${file(./serverless.env.yml):twitter.TWITTER_CONSUMER_KEY}
             TWITTER_CONSUMER_SECRET: ${file(./serverless.env.yml):twitter.TWITTER_CONSUMER_SECRET}
-            TWITTER_ACCESS_TOKEN_KEY: ${file(./serverless.env.yml):twitter.TWITTER_ACCESS_TOKEN_KEY}
-            TWITTER_ACCESS_TOKEN_SECRET: ${file(./serverless.env.yml):twitter.TWITTER_ACCESS_TOKEN_SECRET}
+
